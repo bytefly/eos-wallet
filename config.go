@@ -42,6 +42,6 @@ func LoadConfiguration(filepath string) (*Config, error) {
 }
 
 func SaveConfiguration(config *Config, filepath string) {
-	cfg.Section("extapi").Key("lastBlock").SetValue(strconv.FormatUint(config.LastBlock-6, 10))
+	cfg.Section("extapi").Key("lastBlock").SetValue(strconv.FormatUint(config.LastBlock-1, 10))
 	cfg.SaveTo(filepath)
 }

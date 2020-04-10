@@ -44,7 +44,7 @@ func Listener(config *Config, ch <-chan ObjMessage, notifyChannel chan<- NotifyM
 			last.SetUint64(last_id)
 
 			stop := new(big.Int)
-			stop.Sub(message.Number, big.NewInt(6))
+			stop.Sub(message.Number, big.NewInt(1))
 			log.Printf("Recovery: Doing block %s - %s", last.Text(10), message.Number.String())
 			for last.Cmp(message.Number) <= 0 {
 				//time.Sleep(10000 * time.Millisecond)
@@ -69,8 +69,8 @@ func Listener(config *Config, ch <-chan ObjMessage, notifyChannel chan<- NotifyM
 						blkPool[last.Uint64()] = txns
 						log.Println("add txs to", last.Uint64(), "txs size:", len(txns))
 					}
-					//scan and broadcast 6 confirms
-					txns, ok := blkPool[last.Uint64()-6]
+					//scan and broadcast 1 confirms
+					txns, ok := blkPool[last.Uint64()-1]
 					if ok {
 						for _, txn := range txns {
 							notifyChannel <- txn
@@ -78,12 +78,12 @@ func Listener(config *Config, ch <-chan ObjMessage, notifyChannel chan<- NotifyM
 
 						notifyChannel <- NotifyMessage{
 							MessageType: NOTIFY_TYPE_ADMIN,
-							Amount:      new(big.Int).Sub(last, big.NewInt(6)),
+							Amount:      new(big.Int).Sub(last, big.NewInt(1)),
 						}
 
 						// delete unconfirmed height txs map
-						delete(blkPool, last.Uint64()-6)
-						log.Println("delete txs in block", last.Uint64()-6)
+						delete(blkPool, last.Uint64()-1)
+						log.Println("delete txs in block", last.Uint64()-1)
 					}
 				}
 
