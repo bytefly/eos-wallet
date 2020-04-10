@@ -56,10 +56,10 @@ func GetBalanceHandler(config *Config) func(w http.ResponseWriter, r *http.Reque
 			return
 		}
 
-		// Retrieve ETH balance
+		// Retrieve EOS balance
 		balance, err = GetAddressBalance(config, address)
 		if err != nil {
-			log.Println("get eth balance of", address, "err:", err)
+			log.Println("get eos balance of", address, "err:", err)
 			RespondWithError(w, 500, fmt.Sprintf("Could not retrieve EOS balance: %v", err))
 			return
 		}

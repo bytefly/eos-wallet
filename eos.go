@@ -13,11 +13,13 @@ func GetAddressBalance(config *Config, address string) (*big.Int, error) {
 	api := eos.New(config.RPCURL)
 	bals, err := api.GetCurrencyBalance(eos.AccountName(address), "EOS", "eosio.token")
 	if err != nil {
-		log.Println("get balance fail: %s", err)
 		return nil, err
 	}
 
-	bgInt := new(big.Int).SetInt64(int64(bals[0].Amount))
+	bgInt := new(big.Int)
+	if len(bals) > 0 {
+		bgInt.SetInt64(int64(bals[0].Amount))
+	}
 	return bgInt, nil
 }
 
@@ -90,9 +92,16 @@ func ReadBlock(config *Config, number *big.Int) ([]NotifyMessage, error) {
 }
 
 func VerifyAddress(addr string) bool {
-	if len(addr) != 12 {
+	if len(addr) > 12 {
 		return false
 	}
+	for _, b := range addr {
+		if (b >= 'a' && b <= 'z') || (b >= '0' && b <= '5') || b == '.' {
+			continue
+		}
+		return false
+	}
+
 	_, err := eos.StringToName(addr)
 	if err != nil {
 		return false
