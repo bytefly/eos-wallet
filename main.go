@@ -77,9 +77,9 @@ func main() {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/getBalance", GetBalanceHandler(config))
-	//r.HandleFunc("/sendEos", SendEosHandler(config))
-	//r.HandleFunc("/prepareTrezorEosSign", PrepareTrezorEosSignHandler(config))
-	//r.HandleFunc("/sendSignedEosTx", SendSignedEosTxHandler(config))
+	r.HandleFunc("/sendEos", SendEosHandler(config))
+	r.HandleFunc("/prepareTrezorEosSign", PrepareTrezorEosSignHandler(config))
+	r.HandleFunc("/sendSignedEosTx", SendSignedEosTxHandler(config))
 
 	r.NotFoundHandler = http.HandlerFunc(NotFoundHandler)
 	log.Println("last block: ", last_id)
