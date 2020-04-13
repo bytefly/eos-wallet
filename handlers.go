@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/big"
 	"net/http"
+	"strconv"
 	"sync"
 )
 
@@ -70,74 +71,33 @@ func GetBalanceHandler(config *Config) func(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-/*
-func SendEthHandler(config *Config) func(w http.ResponseWriter, r *http.Request) {
-	isWithdraw := false
-	branch := 0
-	var index int
+func SendEosHandler(config *Config) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := r.ParseForm()
 		if err != nil {
-			log.Println("SendEthHandler: Could not parse body parameters")
+			log.Println("SendEosHandler: Could not parse body parameters")
 			RespondWithError(w, 400, "Could not parse parameters")
 			return
 		}
 
-		from := ""
 		to := r.Form.Get("to")
 		amount := r.Form.Get("amount")
+		memo := r.Form.Get("memo")
 
-		if from == "" {
-			from, err = CreateNewAddress(config.Xpub, 1, 0)
-			if err != nil {
-				log.Println("create from address error: ", err)
-				RespondWithError(w, 500, "Couldn't get from address")
-				return
-			}
-			isWithdraw = true
-			branch = 1
-			index = 0
-		}
-
+		log.Println("send EOS to", to, "amount:", amount)
 		if to == "" {
-			log.Println("Got Send Ethereum order but to field is missing")
+			log.Println("Got Send EOS order but to field is missing")
 			RespondWithError(w, 400, "Missing to field")
 			return
-		} else {
-			_, ok := addrs.Load(to[2:])
-			if ok {
-				log.Println("to address is in our wallet")
-				RespondWithError(w, 500, "Couldn't launch transfering within the same wallet")
-				return
-			}
 		}
-
-		if !VerifyAddress(config, from) || !VerifyAddress(config, to) {
-			log.Println("Invalid from/to address:", from, to)
-			RespondWithError(w, 400, "Invalid from/to address")
-			return
-		}
-
-		if !isWithdraw {
-			v, ok := addrs.Load(from[2:])
-			if !ok {
-				log.Println("from address is not in our wallet")
-				RespondWithError(w, 400, "Invalid from address")
-				return
-			}
-			index = int(v.(uint32))
-		}
-		log.Println("send eth from", from, "to", to, "amount:", amount)
-
-		private, err := GetPrivateKey(config.Xpriv, branch, index)
-		if err != nil {
-			log.Println("get private key fail")
-			RespondWithError(w, 500, "get pirvate key fail")
+		if !VerifyAddress(to) {
+			log.Println("Invalid to address:", to)
+			RespondWithError(w, 400, "Invalid to address")
 			return
 		}
 
 		if amount == "" {
-			log.Println("Got Send Ethereum order but 'amount' field is missing")
+			log.Println("Got Send EOS order but 'amount' field is missing")
 			RespondWithError(w, 400, "Missing 'amount' field")
 			return
 		}
@@ -149,11 +109,11 @@ func SendEthHandler(config *Config) func(w http.ResponseWriter, r *http.Request)
 		}
 
 		bgAmountInt := new(big.Int)
-		bgAmountInt.SetString(RightShift(amount, 18), 10)
-		tx, err := SendEthCoin(config, bgAmountInt, private, to, nil, nil)
+		bgAmountInt.SetString(RightShift(amount, 4), 10)
+		tx, err := SendEosCoin(config, to, bgAmountInt.Int64(), memo)
 		if err != nil {
-			log.Println("send eth err:", err)
-			RespondWithError(w, 500, fmt.Sprintf("Could not send Ethereum coin: %v", err))
+			log.Println("send EOS err:", err)
+			RespondWithError(w, 500, fmt.Sprintf("Could not send EOS: %v", err))
 			return
 		}
 
@@ -161,121 +121,83 @@ func SendEthHandler(config *Config) func(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func PrepareTrezorEthSignHandler(config *Config) func(w http.ResponseWriter, r *http.Request) {
+func PrepareTrezorEosSignHandler(config *Config) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := r.ParseForm()
 		if err != nil {
-			log.Println("SendEthHandler: Could not parse body parameters")
+			log.Println("SendEosHandler: Could not parse body parameters")
 			RespondWithError(w, 400, "Could not parse parameters")
 			return
 		}
 
-		from := r.Form.Get("from")
-		amountStr := r.Form.Get("amount")
 		to := r.Form.Get("to")
+		amountStr := r.Form.Get("amount")
+		memo := r.Form.Get("memo")
 
-		log.Println("PrepareTrezorEthSign:", from, to, amountStr)
-		if from == "" || amountStr == "" {
+		log.Println("PrepareTrezorEosSign:", to, amountStr)
+		if to == "" || amountStr == "" {
 			log.Println("parameters not enought")
 			RespondWithError(w, 400, "Missing some fields")
 			return
 		}
 
-		amount, ok := new(big.Int).SetString(RightShift(amountStr, 18), 10)
+		amount, ok := new(big.Int).SetString(RightShift(amountStr, 4), 10)
 		if !ok {
 			log.Println("invalid amount")
 			RespondWithError(w, 400, "Invalid amount")
 			return
 		}
 
-		if to != "" && !VerifyAddress(config, to) {
+		if !VerifyAddress(to) {
 			log.Println("invalid to address:", to)
 			RespondWithError(w, 400, "invalid to address")
 			return
-		} else if to == "" {
-			to, _ = CreateNewAddress(config.Xpub, 1, 0)
 		}
 
-		unsignedTx, err := PrepareTrezorEthSign(config, from, amount, to)
+		unsignedTx, err := PrepareTrezorEosSign(config, to, amount.Int64(), memo)
 		if err != nil {
-			RespondWithError(w, 500, fmt.Sprintf("prepare trezor Eth Sign err: %v", err))
+			RespondWithError(w, 500, fmt.Sprintf("prepare trezor Eos Sign err: %v", err))
 		} else {
 			Respond(w, 0, map[string]string{"unsignedTx": unsignedTx})
 		}
 	}
 }
 
-func SendSignedEthTxHandler(config *Config) func(w http.ResponseWriter, r *http.Request) {
+func SendSignedEosTxHandler(config *Config) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := r.ParseForm()
 		if err != nil {
-			log.Println("SendEthHandler: Could not parse body parameters")
+			log.Println("SendEosHandler: Could not parse body parameters")
 			RespondWithError(w, 400, "Could not parse parameters")
 			return
 		}
 
-		from := r.Form.Get("from")
 		amountStr := r.Form.Get("amount")
 		to := r.Form.Get("to")
-		R := r.Form.Get("r")
-		S := r.Form.Get("s")
-		V := r.Form.Get("v")
+		memo := r.Form.Get("memo")
+		sig := r.Form.Get("sig")
 
-		log.Println("sendSignedEth:", from, to, amountStr)
-		if from == "" || amountStr == "" ||
-			R == "" || S == "" || V == "" {
+		log.Println("sendSignedEos:", to, amountStr)
+		if to == "" || amountStr == "" || sig == "" {
 			log.Println("parameters not enought")
 			RespondWithError(w, 400, "Missing some fields")
 			return
 		}
 
-		amount, ok := new(big.Int).SetString(RightShift(amountStr, 18), 10)
+		amount, ok := new(big.Int).SetString(RightShift(amountStr, 4), 10)
 		if !ok {
 			log.Println("invalid amount")
 			RespondWithError(w, 400, "Invalid amount")
 			return
 		}
 
-		rbs, err := hex.DecodeString(R[2:])
-		if err != nil {
-			log.Println("invalid r sig")
-			RespondWithError(w, 400, "Invalid sig")
-			return
-		}
-		sbs, err := hex.DecodeString(S[2:])
-		if err != nil {
-			log.Println("invalid s sig")
-			RespondWithError(w, 400, "Invalid sig")
-			return
-		}
-		vbs, err := hex.DecodeString(V[2:])
-		if err != nil {
-			log.Println("invalid v sig")
-			RespondWithError(w, 400, "Invalid sig")
-			return
-		}
-
-		if !VerifyAddress(config, from) {
-			log.Println("invalid from address:", to)
-			RespondWithError(w, 400, "invalid from address")
-			return
-		}
-
-		if to != "" && !VerifyAddress(config, to) {
+		if !VerifyAddress(to) {
 			log.Println("invalid to address:", to)
 			RespondWithError(w, 400, "invalid to address")
 			return
-		} else if to == "" {
-			to, _ = CreateNewAddress(config.Xpub, 1, 0)
 		}
 
-		vbs[0] -= 35
-		vbs[0] -= byte(config.ChainId.Uint64() << 1)
-		sig := make([]byte, 0)
-		sig = append(sig, rbs...)
-		sig = append(sig, sbs...)
-		sig = append(sig, vbs...)
-		hash, err := SendSignedEthTx(config, from, amount, to, sig)
+		hash, err := SendSignedEosTx(config, to, amount.Int64(), memo, sig)
 		if err != nil {
 			log.Println("send tx err:", err)
 			RespondWithError(w, 500, fmt.Sprintf("send tx err: %v", err))
@@ -284,4 +206,3 @@ func SendSignedEthTxHandler(config *Config) func(w http.ResponseWriter, r *http.
 		Respond(w, 0, map[string]string{"hash": hash})
 	}
 }
-*/
