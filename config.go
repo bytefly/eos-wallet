@@ -12,7 +12,7 @@ type Config struct {
 	Port    int
 
 	Account string
-	Priv    string
+	Xpriv   string
 
 	LastBlock    uint64
 	RegistryAddr string
@@ -35,7 +35,7 @@ func LoadConfiguration(filepath string) (*Config, error) {
 	config.Port = cfg.Section("network").Key("port").MustInt(8081)
 
 	config.Account = cfg.Section("account").Key("name").String()
-	config.Priv = cfg.Section("account").Key("priv").String()
+	config.Xpriv = cfg.Section("account").Key("xpriv").String()
 
 	config.LastBlock = uint64(cfg.Section("extapi").Key("lastBlock").MustInt(0))
 	config.RegistryAddr = cfg.Section("extapi").Key("registry").String()

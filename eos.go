@@ -7,7 +7,10 @@ import (
 	"log"
 	"math/big"
 
+	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/eoscanada/eos-go"
+	"github.com/eoscanada/eos-go/btcsuite/btcd/btcec"
+	"github.com/eoscanada/eos-go/btcsuite/btcutil"
 	"github.com/eoscanada/eos-go/ecc"
 	"github.com/eoscanada/eos-go/token"
 )
@@ -143,8 +146,9 @@ func VerifyAddress(addr string) bool {
 }
 
 func SendEosCoin(config *Config, to string, amount int64, memo string) (string, error) {
+	wif, _ := ExtractPrivPubKey(config.Xpriv, 0)
 	keyBag := eos.NewKeyBag()
-	keyBag.Add(config.Priv)
+	keyBag.Add(wif)
 
 	api := eos.New(config.RPCURL)
 	api.SetSigner(keyBag)
@@ -163,7 +167,7 @@ func SendEosCoin(config *Config, to string, amount int64, memo string) (string, 
 func PrepareTrezorEosSign(config *Config, to string, amount int64, memo string) (string, error) {
 	trezorTx := &EosTrezorTx{
 		//hardcode, change it if needed
-		Path: "m/44'/194'/0'/0/0",
+		Path: "m/44'/194'/0'/1/0",
 		Transaction: &Transaction{
 			ChainId: config.EosId,
 			Actions: []TransferAction{
@@ -205,4 +209,24 @@ func SendSignedEosTx(config *Config, to string, amount int64, memo string, sig s
 		return "", err
 	}
 	return rsp.TransactionID, err
+}
+
+func ExtractPrivPubKey(xpriv string, index int) (wif, pkStr string) {
+	masterKey, err := hdkeychain.NewKeyFromString(xpriv)
+	if err != nil {
+		return
+	}
+
+	acctExt, err := masterKey.Child(uint32(index))
+	if err != nil {
+		return
+	}
+	privKey, _ := acctExt.ECPrivKey()
+
+	priv, pub := btcec.PrivKeyFromBytes(btcec.S256(), privKey.Serialize())
+	wifObj, _ := btcutil.NewWIF(priv, 0x80, false)
+	eccPub, _ := ecc.NewPublicKeyFromData(append([]byte{0x00}, pub.SerializeCompressed()...))
+
+	wif, pkStr = wifObj.String(), eccPub.String()
+	return
 }

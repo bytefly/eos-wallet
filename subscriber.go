@@ -25,7 +25,7 @@ func GetNewerBlock(config *Config, ch chan<- ObjMessage) error {
 
 	info, err := api.GetInfo()
 	if err != nil {
-		log.Println("get info: %s", err)
+		log.Println("get info err:", err)
 		return err
 	}
 
