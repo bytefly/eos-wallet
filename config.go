@@ -7,7 +7,6 @@ import (
 
 type Config struct {
 	RPCURL  string
-	EosId   string
 	ChainId int
 	Port    int
 
@@ -30,7 +29,6 @@ func LoadConfiguration(filepath string) (*Config, error) {
 	config := new(Config)
 
 	config.RPCURL = cfg.Section("network").Key("rpc_host").String()
-	config.EosId = cfg.Section("network").Key("eos_id").String()
 	config.ChainId = cfg.Section("network").Key("chain_id").MustInt(3)
 	config.Port = cfg.Section("network").Key("port").MustInt(8081)
 

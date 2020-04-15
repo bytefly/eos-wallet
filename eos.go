@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -154,9 +153,7 @@ func SendEosCoin(config *Config, to string, amount int64, memo string) (string, 
 	api.SetSigner(keyBag)
 
 	actions := []*eos.Action{token.NewTransfer(eos.AccountName(config.Account), eos.AccountName(to), eos.NewEOSAsset(amount), memo)}
-	tx := eos.NewTransaction(actions, nil)
-	chainId, _ := hex.DecodeString(config.EosId)
-	rsp, err := api.SignPushTransaction(tx, eos.Checksum256(chainId), eos.CompressionZlib)
+	rsp, err := api.SignPushActionsWithOpts(actions, nil)
 
 	if rsp == nil {
 		return "", err
@@ -165,11 +162,19 @@ func SendEosCoin(config *Config, to string, amount int64, memo string) (string, 
 }
 
 func PrepareTrezorEosSign(config *Config, to string, amount int64, memo string) (string, error) {
+	api := eos.New(config.RPCURL)
+
+	info, err := api.GetInfo()
+	if err != nil {
+		log.Println("get info err:", err)
+		return "", err
+	}
+
 	trezorTx := &EosTrezorTx{
 		//hardcode, change it if needed
 		Path: "m/44'/194'/0'/1/0",
 		Transaction: &Transaction{
-			ChainId: config.EosId,
+			ChainId: info.ChainID.String(),
 			Actions: []TransferAction{
 				TransferAction{
 					Account: "eosio.token",
