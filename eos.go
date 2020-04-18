@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"log"
 	"math/big"
+	"time"
 
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/eoscanada/eos-go"
@@ -34,8 +36,19 @@ type TransferAction struct {
 }
 
 type Transaction struct {
-	ChainId string           `json:"chainId"`
-	Actions []TransferAction `json:"actions"`
+	ChainId string             `json:"chainId"`
+	Header  *TransactionHeader `json:"header"`
+	Actions []TransferAction   `json:"actions"`
+}
+
+type TransactionHeader struct {
+	Expiration     string `json:"expiration"`
+	RefBlockNum    uint16 `json:"refBlockNum"`
+	RefBlockPrefix uint32 `json:"refBlockPrefix"`
+
+	MaxNetUsageWords uint32 `json:"maxNetUsageWords"`
+	MaxCPUUsageMS    uint8  `json:"maxCpuUsageMs"`
+	DelaySec         uint32 `json:"delaySec"`
 }
 
 type EosTrezorTx struct {
@@ -161,6 +174,9 @@ func SendEosCoin(config *Config, to string, amount int64, memo string) (string, 
 	return rsp.TransactionID, err
 }
 
+var blockID eos.Checksum256
+var lastExp string
+
 func PrepareTrezorEosSign(config *Config, to string, amount int64, memo string) (string, error) {
 	api := eos.New(config.RPCURL)
 
@@ -170,11 +186,17 @@ func PrepareTrezorEosSign(config *Config, to string, amount int64, memo string) 
 		return "", err
 	}
 
+	blockID = info.LastIrreversibleBlockID
 	trezorTx := &EosTrezorTx{
 		//hardcode, change it if needed
 		Path: "m/44'/194'/0'/1/0",
 		Transaction: &Transaction{
 			ChainId: info.ChainID.String(),
+			Header: &TransactionHeader{
+				Expiration:     time.Now().UTC().Add(300 * time.Second).Format("2006-01-02T15:04:06"),
+				RefBlockNum:    uint16(binary.BigEndian.Uint32(blockID[:4])),
+				RefBlockPrefix: binary.LittleEndian.Uint32(blockID[8:16]),
+			},
 			Actions: []TransferAction{
 				TransferAction{
 					Account: "eosio.token",
@@ -195,21 +217,25 @@ func PrepareTrezorEosSign(config *Config, to string, amount int64, memo string) 
 			},
 		},
 	}
-
+	lastExp = trezorTx.Transaction.Header.Expiration
 	bs, _ := json.Marshal(&trezorTx)
 	return string(bs), nil
 }
 
 func SendSignedEosTx(config *Config, to string, amount int64, memo string, sig string) (string, error) {
+	api := eos.New(config.RPCURL)
+
 	actions := []*eos.Action{token.NewTransfer(eos.AccountName(config.Account), eos.AccountName(to), eos.NewEOSAsset(amount), memo)}
-	stx := eos.NewSignedTransaction(eos.NewTransaction(actions, nil))
+	tx := eos.NewTransaction(actions, nil)
+	tx.Fill(blockID, 0, 0, 0)
+	tx.Expiration, _ = eos.ParseJSONTime(lastExp)
+
+	stx := eos.NewSignedTransaction(tx)
 	signature, _ := ecc.NewSignature(sig)
 	stx.Signatures = append(stx.Signatures, signature)
 	packedTx, _ := stx.Pack(eos.CompressionZlib)
 
-	api := eos.New(config.RPCURL)
 	rsp, err := api.PushTransaction(packedTx)
-
 	if rsp == nil {
 		return "", err
 	}

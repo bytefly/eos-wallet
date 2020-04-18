@@ -45,7 +45,7 @@ func Listener(config *Config, ch <-chan ObjMessage, notifyChannel chan<- NotifyM
 
 			stop := new(big.Int)
 			stop.Sub(message.Number, big.NewInt(1))
-			log.Printf("Recovery: Doing block %s - %s", last.Text(10), message.Number.String())
+			//log.Printf("Recovery: Doing block %s - %s", last.Text(10), message.Number.String())
 			for last.Cmp(message.Number) <= 0 {
 				//time.Sleep(10000 * time.Millisecond)
 				txns, err := ReadBlock(config, last)
