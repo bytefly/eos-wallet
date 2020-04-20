@@ -48,8 +48,7 @@ func GetBalanceHandler(config *Config) func(w http.ResponseWriter, r *http.Reque
 
 		address := r.URL.Query().Get("address")
 		if address == "" {
-			RespondWithError(w, 400, "Missing 'address' field")
-			return
+			address = config.Account
 		}
 		if !VerifyAddress(address) {
 			log.Println("Invalid address:", address)
