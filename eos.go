@@ -138,7 +138,7 @@ func ReadBlock(config *Config, number *big.Int) ([]NotifyMessage, error) {
 	return messages, nil
 }
 
-func VerifyAddress(addr string) bool {
+func VerifyAddress(config *Config, addr string) bool {
 	if len(addr) > 12 {
 		return false
 	}
@@ -150,6 +150,12 @@ func VerifyAddress(addr string) bool {
 	}
 
 	_, err := eos.StringToName(addr)
+	if err != nil {
+		return false
+	}
+
+	api := eos.New(config.RPCURL)
+	_, err = api.GetAccount(eos.AccountName(addr))
 	if err != nil {
 		return false
 	}

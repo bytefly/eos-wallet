@@ -50,7 +50,7 @@ func GetBalanceHandler(config *Config) func(w http.ResponseWriter, r *http.Reque
 		if address == "" {
 			address = config.Account
 		}
-		if !VerifyAddress(address) {
+		if !VerifyAddress(config, address) {
 			log.Println("Invalid address:", address)
 			RespondWithError(w, 400, "Invalid address")
 			return
@@ -89,7 +89,7 @@ func SendEosHandler(config *Config) func(w http.ResponseWriter, r *http.Request)
 			RespondWithError(w, 400, "Missing to field")
 			return
 		}
-		if !VerifyAddress(to) {
+		if !VerifyAddress(config, to) {
 			log.Println("Invalid to address:", to)
 			RespondWithError(w, 400, "Invalid to address")
 			return
@@ -147,7 +147,7 @@ func PrepareTrezorEosSignHandler(config *Config) func(w http.ResponseWriter, r *
 			return
 		}
 
-		if !VerifyAddress(to) {
+		if !VerifyAddress(config, to) {
 			log.Println("invalid to address:", to)
 			RespondWithError(w, 400, "invalid to address")
 			return
@@ -190,7 +190,7 @@ func SendSignedEosTxHandler(config *Config) func(w http.ResponseWriter, r *http.
 			return
 		}
 
-		if !VerifyAddress(to) {
+		if !VerifyAddress(config, to) {
 			log.Println("invalid to address:", to)
 			RespondWithError(w, 400, "invalid to address")
 			return
