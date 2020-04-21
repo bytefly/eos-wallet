@@ -41,6 +41,27 @@ func NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	RespondWithError(w, 404, "Not found")
 }
 
+func GetMemoHandler(config *Config) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		arg := r.URL.Query().Get("uid")
+		if arg == "" {
+			RespondWithError(w, 400, "missing uid")
+			return
+		}
+
+		uid, err := strconv.ParseUint(arg, 10, 64)
+		if err != nil {
+			RespondWithError(w, 500, fmt.Sprintf("invalid uid"))
+			return
+		}
+
+		memo := CreateMemoByUID(uid)
+		log.Println("create memo of", uid, ":", memo)
+		Respond(w, 0, map[string]string{"memo": memo})
+		return
+	}
+}
+
 func GetBalanceHandler(config *Config) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var balance *big.Int

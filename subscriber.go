@@ -18,7 +18,7 @@ type ObjMessage struct {
 }
 
 var blkPool = make(map[uint64][]NotifyMessage)
-var minAmount = new(big.Int).Exp(big.NewInt(10), big.NewInt(0), nil) //0.0001 EOS
+var minAmount = new(big.Int).SetUint64(1000) //0.1000 EOS
 
 func GetNewerBlock(config *Config, ch chan<- ObjMessage) error {
 	api := eos.New(config.RPCURL)
@@ -130,11 +130,17 @@ func Notifier(config *Config, ch <-chan NotifyMessage) {
 			}
 		}
 		// handle confirmed wallet transaction
-		if findTo && !findFrom {
+		if findTo && !findFrom && message.Memo != "" {
 			log.Printf("%s %s tokens deposit to the wallet, %s -> %s, memo: %s tx: %s\n", symbol, amount, from, to, message.Memo, message.TxHash)
 			if message.Amount.Cmp(minAmount) < 0 { //ignore tiny deposit
-				log.Println("amount is too small, ignored", amount)
+				log.Println("amount is too small, ignored")
 			} else {
+				uid, err := ParseMemoToUID(message.Memo)
+				if err != nil {
+					log.Println("user not found, ignored")
+					continue
+				}
+				log.Println("user ID:", uid)
 				// call the deposit interface
 				storeTokenDepositTx(config, symbol, message.TxHash, message.Memo, amount)
 			}

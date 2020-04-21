@@ -76,6 +76,7 @@ func main() {
 	last_id = config.LastBlock
 
 	r := mux.NewRouter()
+	r.HandleFunc("/getMemo", GetMemoHandler(config))
 	r.HandleFunc("/getBalance", GetBalanceHandler(config))
 	r.HandleFunc("/sendEos", SendEosHandler(config))
 	r.HandleFunc("/prepareTrezorEosSign", PrepareTrezorEosSignHandler(config))

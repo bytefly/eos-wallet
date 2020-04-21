@@ -7,5 +7,6 @@ require (
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/eoscanada/eos-go v0.9.0
 	github.com/gorilla/mux v1.7.4
+	github.com/speps/go-hashids v2.0.0+incompatible
 	gopkg.in/ini.v1 v1.55.0
 )

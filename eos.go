@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math/big"
+	"strconv"
 	"time"
 
 	"github.com/btcsuite/btcutil/hdkeychain"
@@ -14,6 +15,7 @@ import (
 	"github.com/eoscanada/eos-go/btcsuite/btcutil"
 	"github.com/eoscanada/eos-go/ecc"
 	"github.com/eoscanada/eos-go/token"
+	"github.com/speps/go-hashids"
 )
 
 type TransferData struct {
@@ -82,8 +84,8 @@ func ParseTransaction(tx *eos.SignedTransaction, id string, ts int64) []NotifyMe
 			dest := string(transfer.To)
 			quantity := transfer.Quantity
 			memo := transfer.Memo
-			//filter empty memo and long memo(longer than 12)
-			if quantity.Symbol.Symbol == "EOS" && memo != "" && len(memo) <= 12 {
+
+			if quantity.Symbol.Symbol == "EOS" {
 				if fDebug {
 					log.Printf("EOS: %s => %s / Value: %d Memo: %s\n", from, dest, int64(quantity.Amount), memo)
 				}
@@ -265,5 +267,31 @@ func ExtractPrivPubKey(xpriv string, index int) (wif, pkStr string) {
 	eccPub, _ := ecc.NewPublicKeyFromData(append([]byte{0x00}, pub.SerializeCompressed()...))
 
 	wif, pkStr = wifObj.String(), eccPub.String()
+	return
+}
+
+func CreateMemoByUID(uid uint64) string {
+	hd := hashids.NewData()
+	hd.Salt = "mohu@2020"
+	hd.Alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ23456789"
+	hd.MinLength = 5
+
+	h, _ := hashids.NewWithData(hd)
+	newID, _ := h.EncodeHex(strconv.FormatUint(uid, 16))
+	return newID
+}
+
+func ParseMemoToUID(memo string) (uid uint64, err error) {
+	hd := hashids.NewData()
+	hd.Salt = "mohu@2020"
+	hd.Alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ23456789"
+	hd.MinLength = 5
+
+	h, _ := hashids.NewWithData(hd)
+	d, err := h.DecodeHex(memo)
+	if err != nil {
+		return
+	}
+	uid, err = strconv.ParseUint(d, 16, 64)
 	return
 }
