@@ -226,3 +226,20 @@ func SendSignedEosTxHandler(config *Config) func(w http.ResponseWriter, r *http.
 		Respond(w, 0, map[string]string{"hash": hash})
 	}
 }
+
+func CheckAddrHandler(config *Config) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		addr := r.URL.Query().Get("address")
+		if addr == "" {
+			RespondWithError(w, 400, "missing address")
+			return
+		}
+
+		ok := VerifyAddress(config, addr)
+		if ok {
+			Respond(w, 0, map[string]string{"result": "valid"})
+		} else {
+			Respond(w, 0, map[string]string{"result": "invalid"})
+		}
+	}
+}
